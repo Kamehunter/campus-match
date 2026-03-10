@@ -1,32 +1,71 @@
 "use client";
-import { useState } from "react"; // ステートを追加
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-export default function MyPage() {
 
+export default function MyPage() {
   const router = useRouter();
   // ① ポップアップが表示されているかどうかを管理する箱
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   // ② ログアウトを実際に実行する関数
   const handleLogout = () => {
     // 本来はここでサーバー側のセッションを消したりする
+    localStorage.removeItem("access_token");
     console.log("ログアウトしたで");
     router.push("/"); // トップページへ飛ばす
-  }
+  };
+
   // 本来はバックエンド（友人）からデータを取ってくるけど、一旦「仮データ」を置くで
-  const user = {
+  const [user, setUser] = useState({
     name: "たなか",
     faculty: "工学部",
     department: "電子学科",
     studentId: "00A23000",
     email: "example@osaka-u.ac.jp",
     bio: "物理学徒です。量子力学とバイク（VTR250）が好きです",
-  };
+  });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        // GET /profile/me が存在すると仮定してデータを取得
+        const res = await fetch("https://campus-match-api.onrender.com/profile/me", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(prev => ({
+            ...prev,
+            name: data.nickname || prev.name,
+            faculty: data.faculty || prev.faculty,
+            department: data.department || prev.department,
+            bio: data.bio || prev.bio,
+            // 追加項目があれば適宜反映
+          }));
+        } else {
+          console.error("プロフィール取得失敗", res.status);
+        }
+      } catch (err) {
+        console.error("通信エラー", err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
       {/* ヘッダーエリア */}
-      <div className="bg-teal-600 h-32 w-full"></div>
+      <div className="bg-teal-600 h-32 w-full relative overflow-hidden flex flex-col items-center justify-center pb-4">
+         {/* 背景の装飾 */}
+         <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+         <span className="text-[10px] font-bold text-teal-200 tracking-[0.3em] mb-1 relative z-10">OSAKA UNIVERSITY</span>
+         <h1 className="text-2xl font-black text-white tracking-widest relative z-10">CAMPUS MATCH</h1>
+      </div>
 
       <div className="max-w-md mx-auto px-4 -mt-16">
         {/* プロフィールカード */}

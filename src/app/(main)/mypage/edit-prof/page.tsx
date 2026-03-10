@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditProfile() {
@@ -13,17 +13,64 @@ export default function EditProfile() {
         bio: "物理学徒です。量子力学とバイク（VTR250）が好きです",
     });
 
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const token = localStorage.getItem("access_token");
+                const res = await fetch("https://campus-match-api.onrender.com/profile/me", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setFormData(prev => ({
+                        ...prev,
+                        name: data.nickname || prev.name,
+                        faculty: data.faculty || prev.faculty,
+                        department: data.department || prev.department,
+                        bio: data.bio || prev.bio,
+                    }));
+                }
+            } catch (err) {
+                console.error("プロフィール取得エラー", err);
+            }
+        };
+        fetchProfile();
+    }, []);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        // 保存処理をここに書く（API呼び出しなど）
-        console.log("保存したデータ:", formData);
-        // マイページへ戻る
-        router.push("/mypage");
+        try {
+            const token = localStorage.getItem("access_token");
+            const res = await fetch("https://campus-match-api.onrender.com/profile/me", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                    nickname: formData.name,
+                    bio: formData.bio,
+                    // 学部学科の更新がサポートされている場合はここに追加
+                })
+            });
+            if (res.ok) {
+                console.log("保存したデータ:", formData);
+                router.push("/mypage");
+            } else {
+                console.error("保存失敗", res.status);
+            }
+        } catch (err) {
+            console.error("通信エラー", err);
+        }
     };
 
     return (

@@ -1,42 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, UserPlus, Check, X, Bell, ChevronRight, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Sparkles, UserPlus, Check, X, Bell, ChevronRight, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function LikedPage() {
-  const [likedUsers, setLikedUsers] = useState([
-    {
-      id: 101,
-      name: "ミカ",
-      age: 20,
-      faculty: "文学部",
-      department: "人文学科",
-      message: "VTR250、かっこいいですね！私もバイク興味あります🏍️",
-      time: "2時間前",
-      avatar: "👩‍🎓",
-    },
-    {
-      id: 102,
-      name: "サトウ",
-      age: 21,
-      faculty: "基礎工学部",
-      department: "システム科学科",
-      message: "量子力学の課題、僕も苦戦してます…！カフェで一緒に勉強しませんか？☕",
-      time: "昨日",
-      avatar: "👨‍🎓",
-    },
-    {
-      id: 103,
-      name: "ユイ",
-      age: 19,
-      faculty: "経済学部",
-      department: "経済学科",
-      message: "プロフィール写真、すごくおしゃれですね✨ よかったらお話ししてみたいです！",
-      time: "昨日",
-      avatar: "☕",
-    },
-  ]);
+  const [likedUsers, setLikedUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch("https://campus-match-api.onrender.com/interactions/matches", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // バックエンドからのマッチデータをマッピング
+          const mappedUsers = data.map((u: any, idx: number) => ({
+            id: u.user_id || u.id || idx,
+            name: u.nickname || u.name || "名無し",
+            age: u.age || 20,
+            faculty: u.faculty || "",
+            department: u.department || "",
+            message: u.bio || "よろしくお願いします！",
+            time: "最近",
+            avatar: ["👩‍🎓", "👨‍🎓", "☕", "🚀", "🎸"][idx % 5],
+          }));
+          setLikedUsers(mappedUsers);
+        } else {
+          console.error("マッチ取得失敗", res.status);
+        }
+      } catch (err) {
+        console.error("通信エラー", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMatches();
+  }, []);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState<"match" | "skip" | null>(null);
@@ -71,11 +78,14 @@ export default function LikedPage() {
     <main className="min-h-screen bg-gray-50 pb-24 font-sans overflow-hidden">
       
       {/* ===== ヘッダー ===== */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-30 flex items-center justify-between shadow-sm">
-        <h1 className="text-lg font-bold text-teal-700 flex items-center gap-2">
-          <Bell size={20} className="text-teal-500 fill-teal-100" />
-          届いた「いいね」
-        </h1>
+      <header className="bg-white border-b border-gray-100 px-6 py-3 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold text-gray-400 tracking-[0.2em] mb-0.5">OSAKA UNIV.</span>
+          <h1 className="text-lg font-black text-teal-700 flex items-center gap-1.5 leading-none">
+            <Bell size={18} className="text-teal-500 fill-teal-100" />
+            届いた「いいね」
+          </h1>
+        </div>
         
         {/* 右上の人数カウンター（通知バッジ風） */}
         {remainingUsers > 0 ? (

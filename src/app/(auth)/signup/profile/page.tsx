@@ -7,6 +7,7 @@ import { Camera, Sparkles, UserCircle2, Hash, X } from "lucide-react";
 
 export default function ProfileSetupPage() {
   const router = useRouter();
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState("");
   const [currentTag, setCurrentTag] = useState("");
@@ -26,6 +27,7 @@ export default function ProfileSetupPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setProfileImageFile(file);
       setProfileImage(URL.createObjectURL(file));
     }
   };
@@ -52,20 +54,66 @@ export default function ProfileSetupPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const profileData = {
-      nickname,
-      bio,
-      tags,
-      club,
-      freeTimes,
-      profile_image: profileImage ? "uploaded_profile_image" : null
-    };
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        alert("ログイン情報が見つかりません。もう一度ログインしてください。");
+        router.push("/login");
+        return;
+      }
 
-    console.log("プロフィールデータ:", profileData);
-    alert("プロフィールを保存しました！\nトップページへ移動します。");
-    router.push("/");
+      // 1. プロフィールデータ（JSON）の送信
+      const freeSlotsLabels = freeTimes.map(id => timeSlots.find(t => t.id === id)?.label).filter(Boolean);
+      
+      const profileData = {
+        nickname: nickname,
+        bio: bio,
+        habit: tags,
+        circles: club,
+        free_slots: freeSlotsLabels
+      };
+
+      const setupRes = await fetch("https://campus-match-api.onrender.com/profile/setup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(profileData)
+      });
+
+      if (!setupRes.ok) {
+        throw new Error("プロフィールの保存に失敗しました。");
+      }
+
+      // 2. プロフィール画像がある場合はアップロード
+      if (profileImageFile) {
+        const formData = new FormData();
+        formData.append("file", profileImageFile);
+
+        const avatarRes = await fetch("https://campus-match-api.onrender.com/profile/upload-avatar", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (!avatarRes.ok) {
+          console.error("画像アップロード失敗:", avatarRes.status);
+          // 画像アップロードに失敗しても、プロフィールは保存されているので進める
+        }
+      }
+
+      console.log("プロフィールデータ:", profileData);
+      alert("プロフィールを保存しました！\nトップページへ移動します。");
+      router.push("/matching");
+    } catch (err) {
+      console.error("通信エラー", err);
+      alert("エラーが発生しました。");
+    }
   };
 
   return (

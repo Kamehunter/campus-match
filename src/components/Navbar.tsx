@@ -25,7 +25,8 @@ export default function Navbar() {
     ">
             {/* PC時のみ表示するロゴ */}
             <div className="hidden md:block mb-10 px-4">
-                <h1 className="text-2xl font-bold text-teal-600 tracking-tighter">CAMPUS MATCH</h1>
+                <div className="text-[10px] font-bold text-gray-400 tracking-widest mb-1">OSAKA UNIVERSITY</div>
+                <h1 className="text-xl font-black text-teal-600 tracking-tight">CAMPUS MATCH</h1>
             </div>
 
             <div className="flex flex-row w-full justify-around md:flex-col md:gap-2">

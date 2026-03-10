@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "阪大生限定のマッチングアプリ",
 };
 
+import AuthGuard from "../components/AuthGuard";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +29,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
       >
-        {children}
+        <AuthGuard>
+          {children}
+        </AuthGuard>
       </body>
     </html>
   );

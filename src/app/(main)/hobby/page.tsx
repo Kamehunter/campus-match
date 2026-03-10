@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, ChevronRight, ChevronDown, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -58,6 +57,40 @@ export default function HobbyPage() {
   // 選択状態と展開状態の管理
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  // マウント時に現在の趣味を取得
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch("https://campus-match-api.onrender.com/profile/me", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // APIから返ってきた habit (配列) に一致する HOBBIES の id を選択済みにする
+          if (data.habit && Array.isArray(data.habit)) {
+            const initialSelected = new Set<number>();
+            data.habit.forEach((h: string) => {
+              const matched = HOBBIES.find(hobby => hobby.name === h);
+              if (matched) initialSelected.add(matched.id);
+            });
+            setSelectedIds(initialSelected);
+          }
+        }
+      } catch (err) {
+        console.error("プロフィール取得エラー", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const toggleSelection = (id: number) => {
     setSelectedIds(prev => {
@@ -142,8 +175,11 @@ export default function HobbyPage() {
   return (
     <main className="min-h-screen bg-gray-50 pb-36">
       {/* ヘッダーエリア */}
-      <header className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-30 shadow-sm flex items-center justify-between">
-        <h1 className="text-lg font-bold text-teal-700">趣味・関心の登録</h1>
+      <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-30 shadow-sm flex items-center justify-between">
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold text-gray-400 tracking-[0.2em] mb-0.5">OSAKA UNIV.</span>
+          <h1 className="text-lg font-black text-teal-700 leading-none">趣味・関心の登録</h1>
+        </div>
       </header>
 
       {/* 選択した趣味のピン留め表示エリア */}
@@ -181,14 +217,33 @@ export default function HobbyPage() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent z-40 md:pl-64 pointer-events-none">
         <div className="max-w-md mx-auto pointer-events-auto pb-4">
           <button 
-            onClick={() => {
-               console.log("保存した趣味:", selectedHobbies);
-               router.back();
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem("access_token");
+                const habitNames = selectedHobbies.map(h => h.name);
+                const res = await fetch("https://campus-match-api.onrender.com/profile/me", {
+                  method: "PUT",
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                  },
+                  body: JSON.stringify({ habit: habitNames })
+                });
+                if (res.ok) {
+                  console.log("保存した趣味:", habitNames);
+                  router.back();
+                } else {
+                  console.error("保存エラー", res.status);
+                }
+              } catch (err) {
+                console.error("通信エラー", err);
+              }
             }}
-            className="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-[0_4px_14px_0_rgba(13,148,136,0.39)] hover:bg-teal-700 transition active:scale-95 text-lg flex justify-center items-center gap-2"
+            disabled={loading}
+            className={`w-full text-white font-bold py-4 rounded-2xl shadow-[0_4px_14px_0_rgba(13,148,136,0.39)] transition active:scale-95 text-lg flex justify-center items-center gap-2 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700'}`}
           >
             <Check size={20} strokeWidth={3} />
-            この内容で保存する
+            {loading ? "読み込み中..." : "この内容で保存する"}
           </button>
         </div>
       </div>

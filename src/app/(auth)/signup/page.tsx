@@ -82,38 +82,68 @@ export default function SignupPage() {
   };
 
   // 最終的な登録処理
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     if (!studentIdImage) {
       alert("学生証の画像をアップロードしてや！");
       return;
     }
 
-    const baseData = {
-      email,
-      password,
-      birthdate,
-      gender,
-      student_id: studentId,
-      student_type: studentType,
-      phone_number: phoneNumber,
-      student_id_image: "uploaded_image_file_data" // 実際はファイルオブジェクトかURLが入る
-    };
+    try {
+      const is_graduate = studentType === "graduate";
+      // API仕様書に合わせてプロパティをマッピング
+      // API: department -> 学部, major -> 学科/研究科
+      const signupPayload = {
+        email: email,
+        password: password,
+        birthday: birthdate,
+        gender: gender || "other",
+        is_graduate: is_graduate,
+        department: is_graduate ? "" : faculty,
+        major: is_graduate ? graduateSchool : department,
+        student_id: studentId,
+        phone: phoneNumber,
+        agreed_to_terms: true
+      };
 
-    // 学部生と院生でバックエンドに送るデータの形が混乱しないように分ける
-    const signupData = studentType === "undergraduate"
-      ? {
-          ...baseData,
-          faculty,
-          department,
+      const res = await fetch("https://campus-match-api.onrender.com/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(signupPayload)
+      });
+
+      if (res.ok) {
+        console.log("最終登録データ:", signupPayload);
+        
+        // 登録後にそのまま自動でログインを試み、トークンを取得する
+        try {
+          const loginRes = await fetch("https://campus-match-api.onrender.com/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email, password: password })
+          });
+          if (loginRes.ok) {
+            const loginData = await loginRes.json();
+            localStorage.setItem("access_token", loginData.access_token);
+            localStorage.setItem("user_id", loginData.user_id);
+          }
+        } catch (e) {
+          console.error("自動ログイン失敗", e);
         }
-      : {
-          ...baseData,
-          graduate_school: graduateSchool,
-        };
 
-    console.log("最終登録データ:", signupData);
-    // 成功ページ（審査中）へリダイレクト
-    router.push("/signup/success");
+        // 今回のAPIでは学生証画像のアップロード先が明記されていないため、
+        // 登録が通ったらそのまま成功画面（審査中）へ遷移する
+        router.push("/signup/success");
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("サインアップエラー:", res.status, errorData);
+        alert("登録に失敗しました。入力内容を確認してください。");
+      }
+    } catch (err) {
+      console.error("通信エラー:", err);
+      alert("通信エラーが発生しました。");
+    }
   };
 
   return (

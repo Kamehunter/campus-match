@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
@@ -8,10 +9,32 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
-    // 物理の実験データを確認するように、まずは中身をチェック
-    console.log("ログイン情報:", { email, password });
-    alert(`${email} でログインを試みるで！`);
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    try {
+      const res = await fetch("https://campus-match-api.onrender.com/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // トークンとユーザーIDを保存
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("user_id", data.user_id);
+        // ホーム画面へ遷移
+        router.push("/matching");
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("ログインエラー:", res.status, errorData);
+        alert("ログインに失敗しました。メールアドレスまたはパスワードが間違っています。");
+      }
+    } catch (err) {
+      console.error("通信エラー", err);
+      alert("通信エラーが発生しました。");
+    }
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Filter, Heart, X, MessageCircle, Zap } from "lucide-react";
 
 // 阪大の学部・学科データ
@@ -41,83 +41,105 @@ export default function MatchingPage() {
   const [likedUsers, setLikedUsers] = useState<Record<number, boolean>>({});
   const [popHeartId, setPopHeartId] = useState<number | null>(null);
 
-  // ダミーデータ
-  const allUsers = [
-    {
-      id: 1,
-      name: "コジコジ",
-      age: 20,
-      grade: "B2",
-      faculty: "基礎工学部",
-      department: "電子物理科学科",
-      bio: "量子力学の課題、一緒にやらへん？",
-      tags: ["物理", "バイク", "自炊"],
-    },
-    {
-      id: 2,
-      name: "サトウ",
-      age: 21,
-      grade: "B3",
-      faculty: "経済学部",
-      department: "経済学科",
-      bio: "統計学のテスト対策募集中！カフェで勉強しましょう。",
-      tags: ["カフェ巡り", "統計学", "テニス"],
-    },
-    {
-      id: 3,
-      name: "タナカ",
-      age: 18,
-      grade: "B1",
-      faculty: "工学部",
-      department: "応用自然科学科",
-      bio: "プログラミング初心者です。Next.js教えてくれる人募集！🚀",
-      tags: ["プログラミング", "アニメ", "キャンプ"],
-    },
-    {
-      id: 4,
-      name: "ヤマモト",
-      age: 19,
-      grade: "B2",
-      faculty: "文学部",
-      department: "人文学科",
-      bio: "映画好きな人と繋がりたいです！🎥 サブカル系の話できる人、待ってます。",
-      tags: ["映画", "読書", "サブカル"],
-    },
-    {
-      id: 5,
-      name: "ナカムラ",
-      age: 24,
-      grade: "D1",
-      faculty: "基礎工学部",
-      department: "情報科学科",
-      bio: "AIの研究をしています！博士課程の方、仲良くしましょう。休日はコーヒー淹れてます☕",
-      tags: ["AI", "論文", "コーヒー"],
-    },
-  ];
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredUsers = allUsers.filter((user) => {
+  // 初回マウント時やフィルター変更時にユーザーを取得する
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("access_token");
+        
+        // パラメータを組み立てる
+        const params = new URLSearchParams();
+        if (filterDepartment) params.append("department", filterDepartment);
+        // 学部はAPI仕様書にdepartmentしかないため、学部だけで検索する場合はdepartmentに学部名を送るなど調整が必要かもしれませんが仕様通りに
+        if (!filterDepartment && filterFaculty) params.append("department", filterFaculty);
+        if (filterHobby) params.append("habit", filterHobby.split(" ").join(",")); // スペース区切りをカンマに変換
+
+        const query = params.toString();
+        const url = `https://campus-match-api.onrender.com/users/search${query ? "?" + query : ""}`;
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          // APIからのデータ形式をアプリの形式にマッピングする（足りない項目は仮埋め）
+          const mappedUsers = data.map((u: any) => ({
+            id: u.user_id || u.id,
+            name: u.nickname || u.name || "名無し",
+            age: u.age || 20,
+            grade: u.grade || "B1",
+            faculty: u.faculty || "",
+            department: u.department || "",
+            bio: u.bio || "よろしくお願いします。",
+            tags: u.habit || [],
+          }));
+          setUsers(mappedUsers);
+        } else {
+          console.error("ユーザー取得失敗", res.status);
+          setUsers([]);
+        }
+      } catch (err) {
+        console.error("通信エラー", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUsers();
+  }, [filterDepartment, filterFaculty, filterHobby]); // 学年と年齢はAPIで未サポートのためクライアント側でフィルタするなら別処理が必要だが、一旦全て再取得
+
+
+  const filteredUsers = users.filter((user) => {
+    // API側で対応していないフィルタ（学年、年齢など）はフロントエンドで絞り込む
     const matchGrade = filterGrade ? user.grade === filterGrade : true;
     const matchAge = filterAge ? user.age.toString() === filterAge : true;
-    const matchFaculty = filterFaculty ? user.faculty === filterFaculty : true;
-    const matchDepartment = filterDepartment ? user.department === filterDepartment : true;
-    const matchHobby = filterHobby ? user.tags.some(tag => tag.includes(filterHobby)) : true;
-    return matchGrade && matchAge && matchFaculty && matchDepartment && matchHobby;
+    return matchGrade && matchAge;
   });
 
   const availableDepartments = filterFaculty ? osakaUFaculties[filterFaculty] : [];
 
   // いいね機能＆ドーパミン演出
-  const handleLike = (id: number) => {
+  const handleLike = async (id: number) => {
     // 巨大なハートを表示して消すアニメーション演出
     setPopHeartId(id);
     setTimeout(() => setPopHeartId(null), 800);
     setLikedUsers(prev => ({ ...prev, [id]: true }));
     
+    // バックエンドにいいねを送信
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("https://campus-match-api.onrender.com/interactions/like", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ to_user_id: String(id) })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // if_matchがtrueならマッチング成立の演出を出す
+        if (data.is_match) {
+           alert("マッチしました！"); // 本来は専用のド派手な演出にするとなお良い
+        }
+      }
+    } catch (err) {
+      console.error("いいね送信エラー:", err);
+    }
+
     // スムーズに次の人へスクロールさせる（TikTok的ハック）
     setTimeout(() => {
       const parent = document.getElementById("scroll-container");
       if (parent) {
-        // 現在のスクロール位置から画面1つ分次に送る
         parent.scrollBy({ top: window.innerHeight, behavior: "smooth" });
       }
     }, 600);
@@ -133,6 +155,12 @@ export default function MatchingPage() {
   return (
     <div className="h-[calc(100vh-4rem)] md:h-screen w-full bg-black relative overflow-hidden font-sans">
       
+      {/* 画面左上のロゴ (Floating) */}
+      <div className="absolute top-5 left-4 z-40 flex flex-col pointer-events-none drop-shadow-md">
+        <span className="text-[9px] font-bold text-white/80 tracking-[0.25em] mb-0.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">OSAKA UNIV.</span>
+        <h1 className="text-xl font-black text-white tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">さがす</h1>
+      </div>
+
       {/* 画面右上のフィルターボタン (Floating) */}
       <button 
         onClick={() => setShowFilter(true)} 
@@ -146,7 +174,11 @@ export default function MatchingPage() {
         id="scroll-container"
         className="h-full w-full snap-y snap-mandatory overflow-y-scroll [&::-webkit-scrollbar]:hidden"
       >
-        {filteredUsers.length === 0 ? (
+        {loading ? (
+          <div className="h-full flex items-center justify-center bg-gray-900 text-teal-400">
+            <span className="animate-pulse font-bold">読み込み中...</span>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <div className="h-full flex items-center justify-center bg-gray-900 text-white">
             <div className="text-center">
               <span className="text-6xl block mb-4">😵</span>
@@ -156,8 +188,10 @@ export default function MatchingPage() {
         ) : (
           filteredUsers.map((user, idx) => {
             // 背景やアイコンを固定シードでランダムに割り当て
-            const bgClass = BG_GRADIENTS[user.id % BG_GRADIENTS.length];
-            const activeEmoji = AVATAR_EMOJIS[user.id % AVATAR_EMOJIS.length];
+            // idが文字列の可能性も考慮して文字コードによるハッシュを使うか、一旦インデックスを使う
+            const idKey = typeof user.id === 'number' ? user.id : String(user.id).charCodeAt(0) || idx;
+            const bgClass = BG_GRADIENTS[idKey % BG_GRADIENTS.length];
+            const activeEmoji = AVATAR_EMOJIS[idKey % AVATAR_EMOJIS.length];
 
             return (
               <div key={user.id} className="h-[calc(100dvh-4rem)] md:h-[100dvh] w-full snap-start snap-always relative flex flex-col justify-end overflow-hidden group">
@@ -240,7 +274,7 @@ export default function MatchingPage() {
                   </div>
                   
                   <div className="flex flex-wrap gap-2 mt-4">
-                    {user.tags.map(tag => (
+                    {user.tags.map((tag: string) => (
                       <span key={tag} className="px-3.5 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[13px] font-bold text-white border border-white/30 shadow-lg">
                         #{tag}
                       </span>

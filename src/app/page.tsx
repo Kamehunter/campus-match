@@ -12,13 +12,16 @@ export default function LandingPage() {
 
       {/* ナビゲーションバー */}
       <nav className="relative z-10 w-full px-6 py-8 flex justify-between items-center max-w-7xl mx-auto">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-200">
             <span className="text-white font-extrabold text-xl">C</span>
           </div>
-          <span className="text-2xl font-extrabold text-gray-800 tracking-tight">
-            CAMPUS MATCH
-          </span>
+          <div className="flex flex-col">
+            <span className="text-[9px] font-bold text-gray-500 tracking-[0.2em] leading-none mb-1">OSAKA UNIVERSITY</span>
+            <span className="text-xl md:text-2xl font-black text-gray-800 tracking-tight leading-none">
+              CAMPUS MATCH
+            </span>
+          </div>
         </div>
         <div>
           <Link 
