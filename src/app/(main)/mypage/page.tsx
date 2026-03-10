@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 export default function MyPage() {
 
-    const router = useRouter();
+  const router = useRouter();
   // ① ポップアップが表示されているかどうかを管理する箱
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   // ② ログアウトを実際に実行する関数
@@ -12,12 +12,12 @@ export default function MyPage() {
     // 本来はここでサーバー側のセッションを消したりする
     console.log("ログアウトしたで");
     router.push("/"); // トップページへ飛ばす
-     }
+  }
   // 本来はバックエンド（友人）からデータを取ってくるけど、一旦「仮データ」を置くで
   const user = {
-    name: "いまおか",
-    faculty: "基礎工学部",
-    department: "電子物理科学科",
+    name: "たなか",
+    faculty: "工学部",
+    department: "電子学科",
     studentId: "00A23000",
     email: "example@osaka-u.ac.jp",
     bio: "物理学徒です。量子力学とバイク（VTR250）が好きです",
@@ -33,7 +33,7 @@ export default function MyPage() {
         <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
           {/* プロフィール画像（仮） */}
           <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto border-4 border-white shadow-sm flex items-center justify-center text-4xl overflow-hidden">
-             👤
+            👤
           </div>
 
           <h1 className="mt-4 text-2xl font-bold text-gray-800">{user.name}</h1>
@@ -46,8 +46,8 @@ export default function MyPage() {
             </p>
           </div>
 
-          <Link 
-            href="/mypage/edit"
+          <Link
+            href="/mypage/edit-prof"
             className="mt-6 block w-full border-2 border-teal-600 text-teal-600 py-2 rounded-xl font-bold hover:bg-teal-50 transition"
           >
             プロフィールを編集
@@ -81,22 +81,22 @@ export default function MyPage() {
             <span className="text-gray-400">＞</span>
           </button>
 
-          <Link 
+          <Link
             href="/mypage/delete-account" // さっき作った退会ページのパスを指定
             className="w-full flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition"
-            >
-             <span className="text-gray-700">退会</span>
+          >
+            <span className="text-gray-700">退会</span>
             <span className="text-gray-400">＞</span>
-        </Link>
+          </Link>
 
-        <button 
+          <button
             onClick={() => setShowLogoutModal(true)} // ③ クリックでモーダルを表示
             className="w-full flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 text-red-500 font-medium"
           >
             <span>ログアウト</span>
           </button>
 
-          
+
         </div>
       </div>
 
@@ -109,13 +109,13 @@ export default function MyPage() {
               ログイン画面に戻るけど、ええかな？
             </p>
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => setShowLogoutModal(false)} // キャンセル
                 className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
               >
                 やめる
               </button>
-              <button 
+              <button
                 onClick={handleLogout} // 実行
                 className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition shadow-lg shadow-red-200"
               >

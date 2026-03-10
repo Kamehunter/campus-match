@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, Heart, MessageCircle, User } from "lucide-react"; // アイコンライブラリ
+import { Search, Heart, MessageCircle, User, Star } from "lucide-react"; // アイコンライブラリ
 
 export default function Navbar() {
     const pathname = usePathname();
@@ -10,6 +10,7 @@ export default function Navbar() {
     // メニュー項目の定義
     const menuItems = [
         { name: "さがす", href: "/matching", icon: Search },
+        { name: "趣味", href: "/hobby", icon: Star },
         { name: "いいね", href: "/liked", icon: Heart },
         { name: "チャット", href: "/chat", icon: MessageCircle },
         { name: "マイページ", href: "/mypage", icon: User },
